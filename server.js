@@ -15,7 +15,7 @@ const audioFilePath = process.env["AUDIO_FILE_PATH"] || "<audio file path>";
 const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
 const apiKey = process.env.AZURE_OPENAI_API_KEY;
 const apiVersion = "2024-08-01-preview"; // Azure Whisper API 版本
-const deploymentName = "whisper"; // 你的 Azure Whisper 部署名称
+const deploymentName = "whisper"; // Azure Whisper 部署名称
 
 // 允许的文件类型
 const allowedFileTypes = [
@@ -167,6 +167,33 @@ async function transcribeAudio(filePath, retries = 3) {
     }
   }
 }
+
+// 录音上传并保存的 API
+app.post("/api/recordings", upload.single("recording"), (req, res) => {
+  const { user_id, question_id } = req.body;
+
+  if (!req.file) {
+    return res.status(400).json({ error: "未上传录音文件" });
+  }
+
+  // 假设你希望把录音文件和用户信息保存到数据库中
+  const filePath = `/uploads/${req.file.filename}`;
+  db.run(
+    "INSERT INTO recordings (user_id, question_id, recording_url) VALUES (?, ?, ?)",
+    [user_id, question_id, filePath],
+    function (err) {
+      if (err) {
+        return res.status(500).json({ error: "保存录音失败" });
+      }
+
+      res.json({
+        success: true,
+        message: "录音已保存",
+        recording_id: this.lastID,
+      });
+    }
+  );
+});
 
 // 录音上传并进行语音识别的 API
 app.post("/api/transcribe", upload.single("file"), async (req, res) => {
